@@ -118,7 +118,11 @@ The model's advertised maximum does not configure Ollama. Discovery currently
 reports that maximum, so explicitly override the context limit to match your
 running Ollama server.
 
-The current transport uses Ollama's `/v1/chat/completions` endpoint. Native
+The current transport uses Ollama's `/v1/chat/completions` endpoint. Thinking
+variants are discovered from `/api/show` metadata and sent as `reasoning_effort`.
+Choose `none` or a supported effort such as `low` using **Switch model variant**;
+models with only a thinking capability flag expose `none` and `thinking`.
+The default variant preserves Ollama's default. Native
 Ollama-only controls such as `keep_alive` and `num_ctx` are not new LocalCode
 controls yet. Thinking and tool-calling behavior must be verified with each
 model/template; a chat-capable model is not necessarily tool-capable.

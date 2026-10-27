@@ -18,6 +18,7 @@ export type LocalModel = {
   readonly tools?: boolean
   readonly vision?: boolean
   readonly context?: number | null
+  readonly variants?: Model.Info["variants"]
 }
 
 export type LocalDiscoveryClient = ReturnType<typeof createClient>
@@ -86,6 +87,7 @@ export function createLocalProviderPlugin<Discovered>(input: {
                 output: ["text"],
               }
               if (typeof spec.context === "number" && spec.context > 0) model.limit.context = spec.context
+              if (spec.variants !== undefined) model.variants = spec.variants
             })
           }
         })

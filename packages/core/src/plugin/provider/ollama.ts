@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { Model } from "../../model.js"
 import { createLocalProviderPlugin } from "./local.js"
 
 const Details = Schema.Struct({
@@ -24,6 +25,9 @@ const RemoteModel = Schema.Struct({
 const TagsResponse = Schema.Struct({ models: Schema.Array(RemoteModel) })
 const ShowRequest = Schema.Struct({ model: Schema.String })
 const ShowResponse = Schema.Struct({
+  thinking: Schema.Struct({
+    values: Schema.Array(Schema.Union([Schema.Boolean, Schema.String])),
+  }).pipe(Schema.optional),
   parameters: Schema.String.pipe(Schema.optional),
   license: Schema.String.pipe(Schema.optional),
   modified_at: Schema.String.pipe(Schema.optional),
@@ -83,6 +87,12 @@ export const make = createLocalProviderPlugin({
     family: item.show.details?.family || item.details.family,
     tools: item.show.capabilities?.includes("tools"),
     vision: item.show.capabilities?.includes("vision"),
+    variants: (item.show.thinking?.values ?? (item.show.capabilities?.includes("thinking") ? [false, true] : [])).map(
+      (value) => ({
+        id: Model.VariantID.make(value === false ? "none" : value === true ? "thinking" : value),
+        body: { reasoning_effort: value === false ? "none" : value === true ? "high" : value },
+      }),
+    ),
     context: Object.entries(item.show.model_info ?? {}).flatMap(([key, value]) =>
       key.endsWith(".context_length") && typeof value === "number" && value > 0 ? [value] : [],
     )[0],

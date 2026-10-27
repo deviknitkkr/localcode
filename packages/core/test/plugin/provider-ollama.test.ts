@@ -87,7 +87,8 @@ describe("OllamaPlugin", () => {
               return Response.json(
                 body.model === "gemma3:4b"
                   ? {
-                      capabilities: ["completion", "tools", "vision"],
+                      capabilities: ["completion", "tools", "vision", "thinking"],
+                      thinking: { values: [false, "low", "medium", "xhigh"], default: "medium" },
                       model_info: { "gemma3.context_length": 131_072 },
                     }
                   : body.model === "unknown-context"
@@ -124,9 +125,16 @@ describe("OllamaPlugin", () => {
             family: "gemma3",
             capabilities: { tools: true, input: ["text", "image"], output: ["text"] },
             limit: { context: 131_072, output: 32_000 },
+            variants: [
+              { id: "none", body: { reasoning_effort: "none" } },
+              { id: "low", body: { reasoning_effort: "low" } },
+              { id: "medium", body: { reasoning_effort: "medium" } },
+              { id: "xhigh", body: { reasoning_effort: "xhigh" } },
+            ],
           })
           expect(yield* modelState.get(providerID, Model.ID.make("unknown-context"))).toMatchObject({
             limit: { context: 200_000, output: 32_000 },
+            variants: [],
           })
           expect(yield* modelState.get(providerID, Model.ID.make("nomic-embed"))).toBeUndefined()
           expect(yield* modelState.get(providerID, Model.ID.make("cloud-model"))).toBeUndefined()
