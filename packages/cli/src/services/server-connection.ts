@@ -4,7 +4,6 @@ import { OPENCODE_VERSION } from "../version"
 import { Effect, Option, Redacted } from "effect"
 import { Server as ServerFlag, Standalone as StandaloneFlag } from "../commands/commands"
 import { Env } from "../env"
-import { ServiceConfig } from "./service-config"
 import { Standalone } from "./standalone"
 import { errorMessage } from "../util/error"
 
@@ -17,7 +16,10 @@ export type Args = {
 
 export type Resolved = {
   readonly endpoint: Endpoint
-  readonly service?: ReturnType<typeof managedService>
+  readonly service?: {
+    readonly reconnect: () => ReturnType<typeof Service.ensure>
+    readonly restart: () => ReturnType<typeof Service.ensure>
+  }
 }
 
 export const resolve = Effect.fn("cli.server-connection.resolve")(function* (args: Args = {}) {
@@ -44,29 +46,8 @@ export const resolve = Effect.fn("cli.server-connection.resolve")(function* (arg
       )
     return { endpoint } satisfies Resolved
   }
-  if (standalone || (yield* ServiceConfig.read()).disabled === true) {
-    return { endpoint: yield* Standalone.start() } satisfies Resolved
-  }
-
-  const mismatch = args.mismatch ?? "ignore"
-  const options = yield* ServiceConfig.options({ checkVersion: mismatch !== "ignore" })
-  return {
-    endpoint: yield* resolveManaged({ ...options, onStart: args.onStart }, mismatch),
-    service: managedService(options),
-  } satisfies Resolved
+  return { endpoint: yield* Standalone.start() } satisfies Resolved
 })
-
-function managedService(options: EnsureOptions) {
-  const reconnectOptions = { ...options, version: undefined }
-  return {
-    reconnect: () => Service.ensure(reconnectOptions),
-    restart: () =>
-      Effect.gen(function* () {
-        yield* Service.stop({ file: options.file, pty: "handoff" })
-        yield* Service.ensure(reconnectOptions)
-      }),
-  }
-}
 
 export const shutdownPersistentPty = Effect.fn("cli.server-connection.shutdown-persistent-pty")(function* (
   options: EnsureOptions,
@@ -77,23 +58,11 @@ export const shutdownPersistentPty = Effect.fn("cli.server-connection.shutdown-p
   yield* Effect.tryPromise(() => client.experimental.persistentPty.shutdown())
 })
 
-const resolveManaged = Effect.fnUntraced(function* (options: EnsureOptions, mismatch: NonNullable<Args["mismatch"]>) {
-  if (mismatch === "replace") return yield* Service.ensure(options)
-  if (mismatch === "ignore") return yield* Service.ensure({ ...options, version: undefined })
-
-  const compatible = yield* Service.discover(options)
-  if (compatible !== undefined) return compatible
-  const existing = yield* Service.discover({ ...options, version: undefined })
-  if (existing !== undefined)
-    return yield* Effect.fail(new Error("Background server version does not match this client"))
-  return yield* Service.ensure(options)
-})
-
 function connectError(endpoint: Endpoint, cause: unknown) {
   if (isUnauthorizedError(cause)) {
     return new Error(
       endpoint.auth === undefined
-        ? `Server at ${endpoint.url} requires a password; set OPENCODE_PASSWORD`
+        ? `Server at ${endpoint.url} requires a password; set LOCALCODE_PASSWORD`
         : `Server at ${endpoint.url} rejected the password`,
       { cause },
     )

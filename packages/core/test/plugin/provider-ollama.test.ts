@@ -77,6 +77,7 @@ describe("OllamaPlugin", () => {
                     summary("unknown-context", "unknown-digest"),
                     summary("nomic-embed", "embed-digest"),
                     summary("removed-model", "removed-digest"),
+                    { ...summary("cloud-model", "cloud-digest"), remote_host: "https://ollama.com" },
                   ],
                 })
               }
@@ -128,6 +129,8 @@ describe("OllamaPlugin", () => {
             limit: { context: 200_000, output: 32_000 },
           })
           expect(yield* modelState.get(providerID, Model.ID.make("nomic-embed"))).toBeUndefined()
+          expect(yield* modelState.get(providerID, Model.ID.make("cloud-model"))).toBeUndefined()
+          expect(requests).not.toContainEqual({ method: "POST", path: "/api/show", model: "cloud-model" })
           expect(requests).toContainEqual({ method: "GET", path: "/api/tags" })
           expect(requests).toContainEqual({ method: "POST", path: "/api/show", model: "gemma3:4b" })
           expect(requests).toContainEqual({ method: "POST", path: "/api/show", model: "nomic-embed" })

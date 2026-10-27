@@ -54,7 +54,7 @@ export const make = createLocalProviderPlugin({
       shows.set(client.root, { apiKey: client.apiKey, entries: previous })
       const response = yield* client.getJson("/api/tags", TagsResponse)
       const summaries = response.models
-        .filter((model) => model.model.length > 0)
+        .filter((model) => model.model.length > 0 && !model.remote_host && !model.remote_model)
         .toSorted((a, b) => a.model.localeCompare(b.model))
       const entries = new Map<string, { digest: string; info: typeof ShowResponse.Type }>()
       const models = yield* Effect.forEach(

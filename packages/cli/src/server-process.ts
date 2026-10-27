@@ -4,7 +4,7 @@ import { NodeServices } from "@effect/platform-node"
 import { Service } from "@opencode/client/effect/service"
 import { LayerNode } from "@opencode/util/effect/layer-node"
 import { Global } from "@opencode/util/global"
-import { OPENCODE_ARTIFACT, OPENCODE_CHANNEL, OPENCODE_VERSION } from "./version"
+import { OPENCODE_CHANNEL, OPENCODE_VERSION } from "./version"
 import { AppProcess } from "@opencode/util/process"
 import { randomBytes, randomUUID } from "node:crypto"
 import { Effect, Option, Redacted, Schema } from "effect"
@@ -17,7 +17,6 @@ import { ServiceConfig } from "./services/service-config"
 import { RetainedImage } from "./services/retained-image"
 import { ServiceRegistration } from "./services/service-registration"
 import { RemoteTunnel } from "./services/remote-tunnel"
-import { WebUi } from "./services/web-ui"
 import { databasePath } from "./database-path"
 
 export type Mode = "default" | "service" | "stdio"
@@ -36,7 +35,7 @@ export const run = Effect.fnUntraced(function* (options: Options) {
       LayerNode.compile(LayerNode.group([Global.node, AppProcess.node]), {
         replacements: [
           Global.node.replace(
-            Global.layerWith(process.env.OPENCODE_CONFIG_DIR ? { config: process.env.OPENCODE_CONFIG_DIR } : {}),
+            Global.layerWith(process.env.LOCALCODE_CONFIG_DIR ? { config: process.env.LOCALCODE_CONFIG_DIR } : {}),
           ),
         ],
       }),
@@ -85,8 +84,8 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
       const environmentPassword = yield* Env.password
       // Keep the lease credential out of the environment inherited by tools.
       if (options.mode === "stdio") {
+        delete process.env.LOCALCODE_PASSWORD
         delete process.env.OPENCODE_PASSWORD
-        delete process.env.OPENCODE_SERVER_PASSWORD
       }
       const password =
         options.mode === "service"
@@ -96,12 +95,11 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
             : randomBytes(32).toString("base64url")
       if (!password) return yield* Effect.fail(new Error("Missing server password"))
       const instanceID = randomUUID()
-      const transform = yield* WebUi.handler()
       const remote = { urls: [] as ReadonlyArray<string> }
       const launch = start(
         {
           app: {
-            name: process.env.OPENCODE_CLIENT ?? OPENCODE_ARTIFACT,
+            name: "localcode",
             version: OPENCODE_VERSION,
             channel: OPENCODE_CHANNEL,
           },
@@ -110,27 +108,20 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
           cors: options.cors ?? config.cors,
           password,
           pty: { handoff },
-          simulation: truthy(process.env.OPENCODE_SIMULATE),
+          simulation: false,
           database: {
             path: databasePath(global.data),
           },
           models: {
-            url: process.env.OPENCODE_MODELS_URL,
-            file: process.env.OPENCODE_MODELS_PATH,
-            fetch: !truthy(process.env.OPENCODE_DISABLE_MODELS_FETCH),
+            fetch: false,
+            snapshot: false,
           },
           config: {
-            directory: process.env.OPENCODE_CONFIG_DIR,
-            project: !truthy(
-              process.env.OPENCODE_CONFIG_PROJECT_DISABLE ?? process.env.OPENCODE_DISABLE_PROJECT_CONFIG,
-            ),
-            // .claude is only read for skills, so both flags gate the same roots.
-            claude: !(
-              truthy(process.env.OPENCODE_DISABLE_CLAUDE_CODE) ||
-              truthy(process.env.OPENCODE_DISABLE_CLAUDE_CODE_SKILLS)
-            ),
-            file: process.env.OPENCODE_CONFIG,
-            content: process.env.OPENCODE_CONFIG_CONTENT,
+            directory: process.env.LOCALCODE_CONFIG_DIR,
+            project: !truthy(process.env.LOCALCODE_CONFIG_PROJECT_DISABLE),
+            claude: false,
+            file: process.env.LOCALCODE_CONFIG,
+            content: process.env.LOCALCODE_CONFIG_CONTENT,
           },
           windows: {
             gitbash: process.env.OPENCODE_GIT_BASH_PATH,
@@ -158,7 +149,7 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
                   })
                 }),
             },
-        transform,
+        undefined,
         () => remote.urls,
       )
       const server = yield* launch.pipe(

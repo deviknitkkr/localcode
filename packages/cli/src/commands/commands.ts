@@ -45,13 +45,13 @@ const PermissionParams = {
   ),
 }
 
-const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME : "opencode", {
-  description: "OpenCode command line interface",
+const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME : "localcode", {
+  description: "LocalCode — terminal coding with local models",
   params: {
     ...ServerParams,
     ...PermissionParams,
     directory: Argument.String("directory").pipe(
-      Argument.withDescription("Directory to start OpenCode in"),
+      Argument.withDescription("Directory to start LocalCode in"),
       Argument.optional,
     ),
     continue: Flag.Boolean("continue").pipe(
@@ -397,7 +397,7 @@ const Root = Spec.make(typeof OPENCODE_CLI_NAME === "string" ? OPENCODE_CLI_NAME
       },
     }),
     Spec.make("run", {
-      description: "Run OpenCode with a message",
+      description: "Run LocalCode with a message",
       globalFlags: ServerFlags,
       params: {
         message: Argument.String("message").pipe(

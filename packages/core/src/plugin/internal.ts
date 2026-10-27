@@ -28,7 +28,6 @@ import { ConfigReferencePlugin } from "../config/plugin/reference.js"
 import { ConfigShellPlugin } from "../config/plugin/shell.js"
 import { ConfigSnapshotPlugin } from "../config/plugin/snapshot.js"
 import { ConfigSkillPlugin } from "../config/plugin/skill.js"
-import { ConfigCompatibilityPlugin } from "../config/plugin/compatibility.js"
 import { ConfigToolOutputPlugin } from "../config/plugin/tool-output.js"
 import { ConfigWebSearchPlugin } from "../config/plugin/websearch.js"
 import { ConfigWorktreePlugin } from "../config/plugin/worktree.js"
@@ -72,38 +71,27 @@ import { EditTool } from "../tool/plugin/edit.js"
 import { GlobTool } from "../tool/plugin/glob.js"
 import { GrepTool } from "../tool/plugin/grep.js"
 import { McpResourceTools } from "../tool/plugin/mcp-resource.js"
-import { OpenCodeTools } from "../tool/plugin/opencode.js"
 import { QuestionTool } from "../tool/plugin/question.js"
 import { ReadToolFileSystem } from "../tool/read-filesystem.js"
 import { ReadTool } from "../tool/plugin/read.js"
 import { ShellTool } from "../tool/plugin/shell.js"
 import { SkillTool } from "../tool/plugin/skill.js"
-import { SubagentTool } from "../tool/plugin/subagent.js"
 import { TodoTool } from "../tool/plugin/todo.js"
 import { Tool } from "../tool.js"
 import { ToolOutput } from "../tool-output.js"
 import { WebFetchTool } from "../tool/plugin/webfetch.js"
-import { WebSearchTool } from "../tool/plugin/websearch.js"
 import { WellKnown } from "../wellknown.js"
 import { WriteTool } from "../tool/plugin/write.js"
 import { AgentPlugin } from "./agent.js"
-import BrowserPlugin from "@opencode/plugin-browser"
 import { CommandPlugin } from "./command.js"
 import { IdentityPlugin } from "./identity.js"
 import { PlanPlugin } from "./plan.js"
-import { ModelsDevPlugin } from "./models-dev.js"
 import { McpCodeModeDefaultsPlugin } from "./mcp-codemode-defaults.js"
 import { ProviderPlugins } from "./provider.js"
-import { OpencodePlugin } from "./provider/opencode.js"
-import { WebSearchPlugins } from "./websearch/index.js"
-import { SkillPlugin } from "./skill.js"
 import { VcsHgPlugin } from "./vcs/hg.js"
 import { ToolInputRepairPlugin } from "./tool-input-repair.js"
-import { OptimizePlugin } from "./optimize.js"
 import { VcsGitPlugin } from "./vcs/git.js"
 import { VerbosityPlugin } from "./verbosity.js"
-import { WarmingPlugin } from "./warming.js"
-import { WellKnownPlugin } from "../wellknown/plugin.js"
 
 const services = [
   Agent.Service,
@@ -216,43 +204,32 @@ const pre = [
   ConfigWorktreePlugin.Plugin,
   ConfigMcpPlugin.Plugin,
   McpCodeModeDefaultsPlugin.Plugin,
-  WellKnownPlugin.Plugin,
   VcsGitPlugin.Plugin,
   AgentPlugin.Plugin,
   PlanPlugin.Plugin,
   CommandPlugin.Plugin,
-  SkillPlugin.Plugin,
   VcsHgPlugin.Plugin,
-  ModelsDevPlugin,
   ...ProviderPlugins,
-  ...WebSearchPlugins,
   PatchTool.Plugin,
-  // Render model prompts after the patch plugin selects the available editing tools.
-  ...OptimizePlugin.Plugins,
   VerbosityPlugin.Plugin,
   IdentityPlugin.Plugin,
   EditTool.Plugin,
   GlobTool.Plugin,
   GrepTool.Plugin,
-  OpenCodeTools.Plugin,
   McpResourceTools.Plugin,
   QuestionTool.Plugin,
   ReadTool.Plugin,
   ShellTool.Plugin,
   SkillTool.Plugin,
-  SubagentTool.Plugin,
   TodoTool.Plugin,
   WebFetchTool.Plugin,
-  WebSearchTool.Plugin,
   WriteTool.Plugin,
-  WarmingPlugin.Plugin,
 ] as const satisfies readonly InternalPlugin[]
 
 const post = [
   ConfigInstructionPlugin.Plugin,
   ConfigReferencePlugin.Plugin,
   ConfigAgentPlugin.Plugin,
-  BrowserPlugin,
   ConfigCommandPlugin.Plugin,
   ConfigCompactionPlugin.Plugin,
   ConfigFormatterPlugin.Plugin,
@@ -261,16 +238,14 @@ const post = [
   ConfigShellPlugin.Plugin,
   ConfigSnapshotPlugin.Plugin,
   ConfigToolOutputPlugin.Plugin,
-  ConfigCompatibilityPlugin.Plugin,
   ConfigSkillPlugin.Plugin,
   ConfigProviderPlugin.Plugin,
   ConfigWebSearchPlugin.Plugin,
   ConfigPolicyPlugin.Plugin,
 ] as const satisfies readonly InternalPlugin[]
 
-// Repository config must not switch off policy enforcement or the Console connection that delivers
-// organization statements, so plugin remove operations skip these IDs.
-export const guarded: ReadonlySet<string> = new Set([OpencodePlugin.id, ConfigPolicyPlugin.Plugin.id])
+// Repository config must not switch off permission policy enforcement.
+export const guarded: ReadonlySet<string> = new Set([ConfigPolicyPlugin.Plugin.id])
 
 export const list = Effect.fn("PluginInternal.list")(function* () {
   // Capture only services; activation supplies the child Scope and batching context.

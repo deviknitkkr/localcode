@@ -15,7 +15,6 @@ import { AISDKNative } from "./aisdk-native.js"
 import { Provider } from "./provider.js"
 import { Variant } from "./variant.js"
 import { KV } from "./kv.js"
-import snapshotText from "./models-dev/snapshot.txt" with { type: "text" }
 import { isV1, toV2 } from "./models-dev/v1.js"
 
 // Only the fields opencode reads are decoded. Unknown keys are ignored, and a model that
@@ -498,24 +497,8 @@ export const catalogPath = `/experimental/v2.0/api.json?type=${TYPES.join(",")}`
 
 export const decodeSnapshot = (text: string) => decodeCatalog(text).pipe(Effect.flatMap(normalize))
 
-// Bundled snapshot of the catalog at `catalogPath`, committed at
-// packages/core/src/models-dev/snapshot.txt and refreshed via
-// `bun run script/update-models-snapshot.ts`. Release builds bundle the live
-// catalog in its place when it can be fetched. Decoded and normalized once per
-// isolate: the snapshot is a multi-MB module-level constant and one isolate can
-// host many runtimes (Cloudflare colocates Durable Object instances), so
-// per-runtime decoding would multiply the cost.
-let bundledCache: readonly Snapshot[] | undefined
-const bundledSnapshot = Effect.suspend(() =>
-  bundledCache
-    ? Effect.succeed(bundledCache)
-    : decodeSnapshot(snapshotText).pipe(
-        Effect.map((snapshot) => {
-          bundledCache = snapshot
-          return bundledCache
-        }),
-      ),
-)
+// LocalCode discovers local servers instead of bundling the cloud catalog.
+const bundledSnapshot = Effect.succeed<readonly Snapshot[]>([])
 
 // Versioned so an entry cached from the v1 API is never read as v2.
 function cacheKey(source: string) {
@@ -546,7 +529,7 @@ export const layer = (options?: Options) =>
       )
 
       const source = options?.url || defaultSource
-      const fetch = options?.fetch ?? true
+      const fetch = options?.fetch ?? false
       const userAgent = App.useragent(app)
       const key = cacheKey(source)
       const metaKey = `${key}:meta`

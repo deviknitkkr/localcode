@@ -14,10 +14,9 @@ import { buildAppArchive } from "./app-assets"
 import { verifyArtifact, verifySimulationGraph } from "./verify-artifact"
 import { resolveOpencodePty } from "./opencode-pty"
 import { NativeArch } from "../../../script/native-arch"
-import { bundledModelsSnapshot, modelsSnapshotPlugin } from "../../core/script/models-snapshot"
 
 const dir = path.resolve(import.meta.dirname, "..")
-const binary = "opencode"
+const binary = "localcode"
 const outdir = path.resolve(
   dir,
   process.argv.find((arg) => arg.startsWith("--outdir="))?.slice("--outdir=".length) ?? "dist",
@@ -31,11 +30,9 @@ const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const requestedTarget = process.env.OPENCODE_TARGET
 const skipInstall = process.argv.includes("--skip-install")
-const skipWebUi = process.argv.includes("--skip-web-ui")
 const solidPlugin = createSolidTransformPlugin()
 const highlights = Script.preview ? undefined : embed(process.env.OPENCODE_RELEASE_NOTES)
 const releaseAssets = new Map<string, Promise<Map<string, string>>>()
-const modelsSnapshot = modelsSnapshotPlugin(await bundledModelsSnapshot())
 
 const allTargets: {
   os: string
@@ -73,7 +70,7 @@ if (!targets.length) throw new Error(`Unknown build target: ${requestedTarget}`)
 if (!skipInstall)
   await $`bun install --os="*" --cpu="*" --libc="*" @opentui/core@${pkg.dependencies["@opentui/core"]} @opencode-ai/pty@${pkg.dependencies["@opencode-ai/pty"]}`
 const appArchive = path.join(dir, ".cache", "bun-app-archive.bin")
-await Bun.write(appArchive, await buildAppArchive(Script.channel, { skipBuild: skipWebUi }))
+await Bun.write(appArchive, await buildAppArchive(Script.channel, { skipBuild: true }))
 const appAssetsPlugin: BunPlugin = {
   name: "opencode-app-assets",
   setup(build) {
@@ -167,7 +164,6 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
       opencodePtyPlugin,
       pluginRuntimePlugin,
       simulationGraphPlugin,
-      modelsSnapshot,
     ],
     external: ["node-gyp"],
     format: "esm",
@@ -185,7 +181,7 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
       outfile: path.join(outdir, name, "bin", binary),
       execArgv: [
         "--smol",
-        `--user-agent=opencode/${Script.channel}/${Script.version}/cli`,
+        `--user-agent=localcode/${Script.channel}/${Script.version}/cli`,
         "--use-system-ca",
         "--no-warnings",
         "--",
@@ -194,7 +190,7 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
     },
     define: {
       OPENCODE_VERSION: `'${Script.version}'`,
-      OPENCODE_CLI_NAME: "'opencode'",
+      OPENCODE_CLI_NAME: "'localcode'",
       OPENCODE_CHANNEL: `'${Script.channel}'`,
       OPENCODE_ARTIFACT: `'cli'`,
       ...(highlights ? { OPENCODE_RELEASE_HIGHLIGHTS: JSON.stringify(highlights) } : {}),
@@ -216,10 +212,10 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
     path.join(outdir, name, "package.json"),
     JSON.stringify(
       {
-        name: `@opencode/${name}`,
+        name: `@localcode/${name}`,
         version: Script.version,
         license: "MIT",
-        repository: { type: "git", url: "git+https://github.com/anomalyco/opencode.git" },
+        repository: { type: "git", url: "git+https://github.com/deviknitkkr/localcode.git" },
         os: [item.os],
         cpu: [item.arch],
       },

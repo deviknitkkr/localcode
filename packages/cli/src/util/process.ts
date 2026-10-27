@@ -7,7 +7,7 @@ export function selfCommand() {
   if (runtime !== "bun" && runtime !== "node" && runtime !== "nodejs") return [process.execPath]
   if (!entrypoint) throw new Error("Failed to resolve CLI entrypoint")
   if (runtime === "node" || runtime === "nodejs") return [process.execPath, ...nodeFlags(), entrypoint]
-  return [process.execPath, entrypoint]
+  return [process.execPath, "--preload", import.meta.resolve("@opentui/solid/preload"), entrypoint]
 }
 
 function nodeFlags() {

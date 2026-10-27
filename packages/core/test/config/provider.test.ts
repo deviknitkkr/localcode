@@ -35,6 +35,35 @@ function required<T>(value: T | undefined): T {
 const decode = Schema.decodeUnknownSync(Info)
 
 describe("ConfigProviderPlugin.Plugin", () => {
+  it.effect("uses the bundled compatible adapter for a configured local endpoint without a package", () =>
+    Effect.gen(function* () {
+      const providers = yield* Provider.Service
+      const models = yield* Model.Service
+      yield* addPlugin([
+        new Document({
+          type: "document",
+          info: decode({
+            providers: {
+              local: {
+                settings: { baseURL: "http://127.0.0.1:8080/v1", apiKey: "" },
+                models: {
+                  "my-model": { capabilities: { tools: true }, limit: { context: 32768, output: 4096 } },
+                },
+              },
+            },
+          }),
+        }),
+      ])
+      expect(yield* providers.get(Provider.ID.make("local"))).toMatchObject({
+        package: "@opencode/ai/providers/openai-compatible",
+        settings: { baseURL: "http://127.0.0.1:8080/v1", apiKey: "" },
+      })
+      const model = required(yield* models.get(Provider.ID.make("local"), Model.ID.make("my-model")))
+      expect(model).toMatchObject({ capabilities: { tools: true }, limit: { context: 32768, output: 4096 } })
+      yield* ModelResolver.fromCatalogModel(model)
+    }),
+  )
+
   it.effect("inherits the provider compaction setting with model overrides and rejects unsupported routes", () =>
     Effect.gen(function* () {
       const models = yield* Model.Service

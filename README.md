@@ -1,3 +1,14 @@
+# LocalCode
+
+A local-model-focused terminal coding agent, forked from OpenCode. Start with
+[the LocalCode setup guide](LOCALCODE.md) for Ollama, compatible endpoints,
+skills, MCP, isolated storage, and the current implementation status.
+
+The upstream documentation below is retained for attribution and reference;
+its installation commands install OpenCode, not this fork.
+
+---
+
 <p align="center">
   <a href="https://opencode.ai">
     <picture>

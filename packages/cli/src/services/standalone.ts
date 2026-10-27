@@ -19,9 +19,8 @@ function command(password: string, options: Options) {
   if (!executable) throw new Error("Failed to resolve standalone server command")
   return ChildProcess.make(executable, [...args, "--stdio", "--port", "0"], {
     cwd: startupDirectory,
-    // Explicit entry wins over anything inherited, so a user-exported
-    // OPENCODE_PASSWORD cannot shadow the child's lease credential.
-    env: { OPENCODE_PASSWORD: password },
+    // Explicit entry wins over an inherited LocalCode credential.
+    env: { LOCALCODE_PASSWORD: password },
     extendEnv: true,
     // The server treats EOF on this pipe as the end of its ownership lease.
     // The OS closes it even when the TUI is killed before Effect finalizers run.

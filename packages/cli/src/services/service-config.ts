@@ -57,9 +57,9 @@ export function defaultPort(channel = OPENCODE_CHANNEL, platform = process.platf
 }
 
 function channelPort(channel: string) {
-  if (channel === "latest" || channel === "beta" || channel === "next") return 0xc0de
-  if (channel === "local") return 0xc0df
-  if (channel === "dev") return 0xc0e0
+  if (channel === "latest" || channel === "beta" || channel === "next") return 0xc1de
+  if (channel === "local") return 0xc1df
+  if (channel === "dev") return 0xc1e0
   return 10_000 + (Number.parseInt(Hash.fast(channel).slice(0, 8), 16) % 50_000)
 }
 

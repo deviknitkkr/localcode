@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import "./localcode"
 import { ensurePluginRuntime } from "@opencode/plugin/runtime"
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Cause, Effect } from "effect"
@@ -8,7 +9,7 @@ import { Commands } from "./commands/commands"
 import { Runtime } from "./framework/runtime"
 import { Observability } from "@opencode/util/observability"
 import { Updater } from "./services/updater"
-import { OPENCODE_ARTIFACT, OPENCODE_CHANNEL, OPENCODE_LOCAL, OPENCODE_VERSION } from "./version"
+import { OPENCODE_CHANNEL, OPENCODE_LOCAL, OPENCODE_VERSION } from "./version"
 import { LayerNode } from "@opencode/util/effect/layer-node"
 import { Global } from "@opencode/util/global"
 import { AppProcess } from "@opencode/util/process"
@@ -123,16 +124,16 @@ Effect.gen(function* () {
     LayerNode.compile(LayerNode.group([Global.node, AppProcess.node, Npm.node, EffectFlock.node]), {
       replacements: [
         Global.node.replace(
-          Global.layerWith(process.env.OPENCODE_CONFIG_DIR ? { config: process.env.OPENCODE_CONFIG_DIR } : {}),
+          Global.layerWith(process.env.LOCALCODE_CONFIG_DIR ? { config: process.env.LOCALCODE_CONFIG_DIR } : {}),
         ),
       ],
     }),
   ),
   Effect.provide(
     Observability.layer({
-      endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
-      headers: process.env.OTEL_EXPORTER_OTLP_HEADERS,
-      client: process.env.OPENCODE_CLIENT ?? OPENCODE_ARTIFACT,
+      endpoint: process.env.LOCALCODE_OTEL_ENDPOINT,
+      headers: process.env.LOCALCODE_OTEL_HEADERS,
+      client: "localcode",
       version: OPENCODE_VERSION,
       channel: OPENCODE_CHANNEL,
     }),
