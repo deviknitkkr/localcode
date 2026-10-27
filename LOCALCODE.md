@@ -81,7 +81,8 @@ Inherited `OPENCODE_*` settings are cleared at CLI startup. Use `LOCALCODE_*`
 instead, for example `LOCALCODE_CONFIG`, `LOCALCODE_CONFIG_DIR`,
 `LOCALCODE_CONFIG_CONTENT`, and `LOCALCODE_PRINT_LOGS`. Internally, compatibility
 switches still use the upstream prefix, translated from LocalCode's environment.
-Tracing is opt-in through `LOCALCODE_OTEL_ENDPOINT` and `LOCALCODE_OTEL_HEADERS`.
+Remote telemetry exporters are removed; diagnostic logs stay on disk in
+LocalCode's data directory. No OTEL environment setting enables export.
 There is no upstream automatic updater.
 
 ## Ollama

@@ -2,7 +2,7 @@
 
 import { $ } from "bun"
 import { createHash } from "node:crypto"
-import { mkdir, rm } from "fs/promises"
+import { mkdir, rm, stat } from "fs/promises"
 import path from "path"
 import { Script } from "@opencode/script"
 import { embed } from "@opencode/script/highlights"
@@ -11,7 +11,7 @@ import type { BunPlugin } from "bun"
 import pkg from "../package.json"
 import { discoverPluginRuntimeSpecifiers, pluginRuntimeLoaderCode } from "@opencode/plugin/runtime-modules"
 import { buildAppArchive } from "./app-assets"
-import { verifyArtifact, verifySimulationGraph } from "./verify-artifact"
+import { verifyArtifact } from "./verify-artifact"
 import { resolveOpencodePty } from "./opencode-pty"
 import { NativeArch } from "../../../script/native-arch"
 
@@ -130,14 +130,14 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
       }))
     },
   }
-  const simulationInputs = new Set<string>()
-  const simulationGraphPlugin: BunPlugin = {
-    name: "opencode-simulation-graph",
+  const inputs = new Map<string, number>()
+  const sizeReportPlugin: BunPlugin = {
+    name: "localcode-size-report",
     setup(build) {
-      build.onLoad(
-        { filter: /packages[/\\]simulation[/\\]src[/\\](frontend[/\\](simulation|server)|control-server)\.ts$/ },
-        (args) => void simulationInputs.add(args.path),
-      )
+      build.onLoad({ filter: /./ }, async (args) => {
+        if (args.namespace !== "file") return
+        inputs.set(args.path, (await stat(args.path)).size)
+      })
     },
   }
   const parcelWatcherPackage = `@parcel/watcher-${item.os}-${item.arch}${item.os === "linux" ? `-${item.abi ?? "glibc"}` : ""}`
@@ -163,12 +163,12 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
       parcelWatcherPlugin,
       opencodePtyPlugin,
       pluginRuntimePlugin,
-      simulationGraphPlugin,
+      sizeReportPlugin,
     ],
     external: ["node-gyp"],
     format: "esm",
     minify: true,
-    bytecode: true,
+    bytecode: !process.argv.includes("--no-bytecode"),
     sourcemap: Script.channel === "dev" || Script.channel === "local" ? "inline" : "none",
     splitting: true,
     compile: {
@@ -205,7 +205,14 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
     for (const log of result.logs) console.error(log)
     process.exit(1)
   }
-  verifySimulationGraph(simulationInputs)
+  await Bun.write(
+    path.join(outdir, name, "build-inputs.json"),
+    JSON.stringify(
+      [...inputs].toSorted((a, b) => b[1] - a[1]).map(([file, bytes]) => ({ file: path.relative(dir, file), bytes })),
+      null,
+      2,
+    ),
+  )
   await NativeArch.verify(path.join(outdir, name, "bin", item.os === "win32" ? `${binary}.exe` : binary), item.arch)
 
   await Bun.write(

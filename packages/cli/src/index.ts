@@ -31,7 +31,6 @@ const Handlers = Runtime.handlers(Commands, {
   $: () => import("./commands/handlers/default"),
   upgrade: () => import("./commands/handlers/upgrade"),
   uninstall: () => import("./commands/handlers/uninstall"),
-  acp: () => import("./commands/handlers/acp"),
   api: () => import("./commands/handlers/api"),
   auth: {
     list: () => import("./commands/handlers/auth/list"),
@@ -62,7 +61,6 @@ const Handlers = Runtime.handlers(Commands, {
   },
   models: () => import("./commands/handlers/models"),
   stats: () => import("./commands/handlers/stats"),
-  mini: () => import("./commands/handlers/mini"),
   run: () => import("./commands/handlers/run"),
   pair: () => import("./commands/handlers/pair"),
   reload: () => import("./commands/handlers/reload"),
@@ -131,8 +129,6 @@ Effect.gen(function* () {
   ),
   Effect.provide(
     Observability.layer({
-      endpoint: process.env.LOCALCODE_OTEL_ENDPOINT,
-      headers: process.env.LOCALCODE_OTEL_HEADERS,
       client: "localcode",
       version: OPENCODE_VERSION,
       channel: OPENCODE_CHANNEL,
