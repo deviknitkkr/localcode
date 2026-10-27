@@ -6,8 +6,13 @@ minimal distribution yet.
 
 ## Standalone downloads
 
-The **LocalCode binaries** GitHub Actions workflow builds macOS Apple Silicon
-and Linux x64 executables and uploads archives with SHA-256 checksums. Successful
+The **LocalCode binaries** GitHub Actions workflow builds Windows, Linux (glibc),
+and macOS executables for x64 and ARM64, using Linux cross-builds. It uploads
+archives with SHA-256 checksums, and version tags (`localcode-v*`) publish all
+six archives and checksums to [GitHub Releases](https://github.com/deviknitkkr/localcode/releases). See
+the [installation instructions](README.md#clean-installation) for each platform.
+Cross-build checks verify bundled architecture and contents, not runtime behavior
+on the target OS. Successful
 builds can be attached to a GitHub prerelease. Download the archive for your OS,
 extract it, and run `./localcode /path/to/project`. The Bun runtime is bundled;
 neither Bun nor Node needs to be installed separately. Ollama or
@@ -52,7 +57,11 @@ bun run build
 ```
 
 Output: `packages/cli/dist/cli-<platform>-<architecture>/bin/localcode` (with
-`.exe` on Windows). Build each target on a machine supported by Bun/OpenTUI.
+`.exe` on Windows). Cross-compile with `OPENCODE_TARGET=windows-x64` (or
+`darwin-arm64`, `darwin-x64`, `windows-arm64`, `linux-arm64`, `linux-x64`) when
+running `bun run script/build.ts --skip-install --no-bytecode` from `packages/cli`.
+Install target native dependencies first with
+`bun install --frozen-lockfile --os="*" --cpu="*" --libc="*"` at the repository root.
 The CLI build omits the browser application and cloud model snapshot.
 LocalCode uses ripgrep and fuzzysort for file discovery, omitting the optional
 native FFF search library. Linux CI disables precompiled JavaScript bytecode to

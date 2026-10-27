@@ -3,6 +3,7 @@ name: LocalCode binaries
 on:
   push:
     branches: [localcode-build]
+    tags: ["localcode-v*"]
   workflow_dispatch:
 
 permissions:
@@ -23,12 +24,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
-            platform: darwin-arm64
           - runner: ubuntu-24.04
             platform: linux-x64
           - runner: ubuntu-24.04
             platform: darwin-arm64
+            cross: true
+          - runner: ubuntu-24.04
+            platform: darwin-x64
+            cross: true
+          - runner: ubuntu-24.04
+            platform: linux-arm64
+            cross: true
+          - runner: ubuntu-24.04
+            platform: windows-x64
+            cross: true
+          - runner: ubuntu-24.04
+            platform: windows-arm64
             cross: true
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
@@ -49,6 +60,12 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+
+      - name: Set release version
+        if: startsWith(github.ref, 'refs/tags/localcode-v')
+        run: |
+          version="${GITHUB_REF_NAME#localcode-v}"
+          printf 'OPENCODE_VERSION=%s\n' "$version" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: |
@@ -91,16 +108,24 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
-          binary="packages/cli/dist/cli-$PLATFORM/bin/localcode"
+          executable=localcode
+          if [[ "$PLATFORM" == windows-* ]]; then executable=localcode.exe; fi
+          binary="packages/cli/dist/cli-$PLATFORM/bin/$executable"
           file "$binary"
           mkdir -p artifacts
           cp "packages/cli/dist/cli-$PLATFORM/build-inputs.json" artifacts/
-          tar -czf "artifacts/localcode-$PLATFORM.tar.gz" -C "packages/cli/dist/cli-$PLATFORM/bin" localcode -C "$GITHUB_WORKSPACE" LICENSE LOCALCODE.md
-          wc -c "$binary" "artifacts/localcode-$PLATFORM.tar.gz" | tee artifacts/sizes.txt
+          archive="artifacts/localcode-$PLATFORM.tar.gz"
+          if [[ "$PLATFORM" == windows-* ]]; then
+            archive="artifacts/localcode-$PLATFORM.zip"
+            zip -j "$archive" "$binary" LICENSE LOCALCODE.md README.md
+          else
+            tar -czf "$archive" -C "packages/cli/dist/cli-$PLATFORM/bin" "$executable" -C "$GITHUB_WORKSPACE" LICENSE LOCALCODE.md README.md
+          fi
+          wc -c "$binary" "$archive" | tee artifacts/sizes.txt
           printf '## %s size report\n```\n' "$PLATFORM" >> "$GITHUB_STEP_SUMMARY"
-          wc -c "$binary" "artifacts/localcode-$PLATFORM.tar.gz" >> "$GITHUB_STEP_SUMMARY"
+          wc -c "$binary" "$archive" >> "$GITHUB_STEP_SUMMARY"
           printf '```\n' >> "$GITHUB_STEP_SUMMARY"
-          shasum -a 256 "artifacts/localcode-$PLATFORM.tar.gz" > "artifacts/localcode-$PLATFORM.sha256"
+          shasum -a 256 "$archive" > "artifacts/localcode-$PLATFORM.sha256"
 
       - name: Upload binary
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -109,3 +134,37 @@ jobs:
           path: artifacts/*
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    if: github.repository == 'deviknitkkr/localcode' && startsWith(github.ref, 'refs/tags/localcode-v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download platform archives
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: localcode-*
+          path: assets
+
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          shopt -s nullglob
+          archives=(assets/*/*.tar.gz assets/*/*.zip)
+          checksums=(assets/*/*.sha256)
+          test "${#archives[@]}" -eq 6
+          test "${#checksums[@]}" -eq 6
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            flags=()
+            if [[ "${TAG#localcode-v}" == *-* ]]; then flags+=(--prerelease); fi
+            gh release create "$TAG" --verify-tag --title "LocalCode ${TAG#localcode-v}" \
+              --notes "Standalone Windows, Linux (glibc), and macOS binaries for x64 and ARM64. Built on Linux; target architecture and bundle checks passed. Only Linux x64 is runtime smoke-tested in this workflow. See README.md inside each archive for installation. Mac binaries are unsigned and unnotarized." \
+              "${flags[@]}" "${archives[@]}" "${checksums[@]}"
+          else
+            gh release upload "$TAG" "${archives[@]}" "${checksums[@]}" --clobber
+          fi

@@ -186,7 +186,7 @@ export default { path: file, version: ${JSON.stringify(opencodePty.version)}, sh
       autoloadPackageJson: true,
       target: target.replace(binary, "bun") as Bun.Build.CompileTarget,
       ...(executablePath ? { executablePath } : {}),
-      outfile: path.join(outdir, name, "bin", binary),
+      outfile: path.join(outdir, name, "bin", item.os === "win32" ? `${binary}.exe` : binary),
       execArgv: [
         "--smol",
         `--user-agent=localcode/${Script.channel}/${Script.version}/cli`,

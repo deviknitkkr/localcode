@@ -6,36 +6,100 @@ skills, MCP, isolated storage, and the current implementation status.
 
 ## Clean installation
 
-1. Open [LocalCode binary builds](https://github.com/deviknitkkr/localcode/actions/workflows/localcode-build.yml)
-   and select a recent run. Download the artifact for your machine:
-   - Apple Silicon Mac (M1/M2/M3/M4): `localcode-darwin-arm64-cross`, or
-     `localcode-darwin-arm64` when the native Mac job has completed.
-   - Linux x64 (glibc): `localcode-linux-x64`.
-     Artifacts require a GitHub login. The Mac cross-build runs on Linux and can
-     finish while the native Mac job remains queued.
-2. Extract the downloaded ZIP. In the extracted directory, check the archive
-   against the accompanying SHA-256 file, then install (Mac example):
+1. Open [LocalCode releases](https://github.com/deviknitkkr/localcode/releases)
+   and download the archive and matching `.sha256` file for your machine:
+   | Laptop | Release asset |
+   | --- | --- |
+   | Windows Intel/AMD x64 | `localcode-windows-x64.zip` |
+   | Windows ARM64 | `localcode-windows-arm64.zip` |
+   | Linux Intel/AMD x64 (glibc) | `localcode-linux-x64.tar.gz` |
+   | Linux ARM64 (glibc) | `localcode-linux-arm64.tar.gz` |
+   | Apple Silicon Mac | `localcode-darwin-arm64.tar.gz` |
+   | Intel Mac | `localcode-darwin-x64.tar.gz` |
 
-   ```sh
-   shasum -a 256 localcode-darwin-arm64.tar.gz
-   # Compare with the hash in localcode-darwin-arm64.sha256.
-   tar -xzf localcode-darwin-arm64.tar.gz
-   mkdir -p "$HOME/.local/bin"
-   install -m 755 localcode "$HOME/.local/bin/localcode"
-   export PATH="$HOME/.local/bin:$PATH"
-   localcode --version
-   ```
+   Release downloads do not require a GitHub login and do not have the 14-day
+   Actions artifact expiry. All targets build on Linux without waiting for
+   Mac or Windows runners. Linux x64 receives runtime smoke tests; other targets
+   receive architecture and bundle checks.
 
-   On Linux, substitute `linux-x64` for `darwin-arm64`. Add
-   `export PATH="$HOME/.local/bin:$PATH"` to your shell startup file if needed.
-   Bun and Node are bundled/not required separately. Ollama runs separately.
-   Mac binaries are currently unsigned and unnotarized.
+2. Follow your platform's steps below from the download directory.
+   Development builds are also available as expiring ZIP artifacts under
+   [Actions](https://github.com/deviknitkkr/localcode/actions/workflows/localcode-build.yml);
+   extract that outer ZIP first if using one of those builds.
+3. Install [Ollama](https://ollama.com/download) separately, start it, and install
+   a tool-capable model that fits the laptop's memory (for example,
+   `ollama pull qwen3:4b`). Then run `localcode` in your project and select the
+   model. Bun and Node are not required separately. Git is recommended for
+   working with repositories.
 
-3. Start Ollama with an installed tool-capable model, then run:
+### macOS and Linux
 
-   ```sh
-   localcode /path/to/project
-   ```
+In the download directory (Apple Silicon example):
+
+```sh
+shasum -a 256 localcode-darwin-arm64.tar.gz
+# Compare with the hash in localcode-darwin-arm64.sha256.
+tar -xzf localcode-darwin-arm64.tar.gz
+mkdir -p "$HOME/.local/bin"
+install -m 755 localcode "$HOME/.local/bin/localcode"
+export PATH="$HOME/.local/bin:$PATH"
+localcode --version
+```
+
+Use the platform from the table in place of `darwin-arm64`, for example
+`linux-x64` or `darwin-x64`. Add `export PATH="$HOME/.local/bin:$PATH"` to
+`~/.zshrc` (zsh) or `~/.bashrc` (bash) for future terminals.
+Mac binaries are currently unsigned and unnotarized. Linux builds require
+glibc; Alpine/musl is not included in this workflow.
+
+```sh
+localcode /path/to/project
+```
+
+### Windows (PowerShell)
+
+In the download directory (x64 example):
+
+```powershell
+Get-FileHash .\localcode-windows-x64.zip -Algorithm SHA256
+# Compare with the hash in localcode-windows-x64.sha256.
+$bin = Join-Path $env:LOCALAPPDATA "LocalCode\bin"
+New-Item -ItemType Directory -Force $bin | Out-Null
+Expand-Archive .\localcode-windows-x64.zip -DestinationPath $bin -Force
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if (($userPath -split ';') -notcontains $bin) {
+  [Environment]::SetEnvironmentVariable("Path", "$userPath;$bin", "User")
+}
+$env:Path = "$bin;$env:Path"
+localcode --version
+localcode C:\path\to\project
+```
+
+For Windows ARM64, substitute `windows-arm64` for `windows-x64`. Use Windows
+Terminal/PowerShell. Cross-built Windows binaries have architecture and bundle
+checks but have not yet been runtime-tested on Windows.
+
+### Moving settings to another laptop
+
+Run `localcode debug paths config` on each machine to find the config directory.
+Copy `localcode.json` and any custom skills/MCP config into the destination
+directory. Update model tags, endpoint addresses, and machine-specific MCP paths.
+Pull models separately on the new machine, or configure a reachable LAN endpoint.
+Ollama's KV-cache environment settings are separate and must be configured on
+the inference machine. Choose a context window that fits its memory; the example
+below is not a hardware-independent recommendation.
+
+To update LocalCode, close it and repeat the binary installation with a newer
+artifact; saved settings and sessions remain in the data directories. There is
+no automatic updater.
+
+### Publishing a release
+
+Push a version tag on the desired commit, for example `localcode-v0.1.0-alpha.2`.
+The LocalCode binaries workflow embeds that version, builds all six targets,
+and publishes a GitHub Release with all six archives and six SHA-256 files
+only after every build passes. Versions with a hyphen are marked prereleases.
+Ordinary branch pushes produce Actions artifacts without publishing a release.
 
 ## First launch and configuration
 
@@ -46,6 +110,9 @@ models without one; select a model in the TUI.
 
 To set explicit limits, create `~/.config/localcode/localcode.json` (or use
 `$XDG_CONFIG_HOME/localcode/localcode.json` if you override XDG paths):
+
+On Windows, use the directory printed by `localcode debug paths config` and
+create `localcode.json` there. Create the directory first if it does not exist.
 
 ```json
 {
