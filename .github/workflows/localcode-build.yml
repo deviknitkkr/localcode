@@ -23,6 +23,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - runner: macos-14
+            platform: darwin-arm64
           - runner: ubuntu-24.04
             platform: linux-x64
     runs-on: ${{ matrix.runner }}
@@ -77,7 +79,7 @@ jobs:
           cp "packages/cli/dist/cli-$PLATFORM/build-inputs.json" artifacts/
           tar -czf "artifacts/localcode-$PLATFORM.tar.gz" -C "packages/cli/dist/cli-$PLATFORM/bin" localcode -C "$GITHUB_WORKSPACE" LICENSE LOCALCODE.md
           wc -c "$binary" "artifacts/localcode-$PLATFORM.tar.gz" | tee artifacts/sizes.txt
-          printf '## Linux size report\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          printf '## %s size report\n```\n' "$PLATFORM" >> "$GITHUB_STEP_SUMMARY"
           wc -c "$binary" "artifacts/localcode-$PLATFORM.tar.gz" >> "$GITHUB_STEP_SUMMARY"
           printf '```\n' >> "$GITHUB_STEP_SUMMARY"
           shasum -a 256 "artifacts/localcode-$PLATFORM.tar.gz" > "artifacts/localcode-$PLATFORM.sha256"
