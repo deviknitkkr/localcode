@@ -100,6 +100,14 @@ const pluginRuntimeModulesSource = [
 const pluginRuntimePlugin: BunPlugin = {
   name: "opencode-plugin-runtime",
   setup(build) {
+    build.onLoad({ filter: /filesystem[/\\]fff\.bun\.ts$/ }, () => ({
+      loader: "ts",
+      contents: `import { bind } from ${JSON.stringify(path.resolve(dir, "../core/src/filesystem/fff.ts"))}
+const adapter = bind(undefined, "native file finder omitted from LocalCode")
+export const available = adapter.available
+export const create = adapter.create
+export const Fff = { available, create }`,
+    }))
     build.onLoad({ filter: /plugin[/\\]src[/\\]runtime-modules\.ts$/ }, () => ({
       contents: pluginRuntimeModulesSource,
       loader: "ts",

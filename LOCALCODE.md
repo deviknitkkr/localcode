@@ -54,6 +54,9 @@ bun run build
 Output: `packages/cli/dist/cli-<platform>-<architecture>/bin/localcode` (with
 `.exe` on Windows). Build each target on a machine supported by Bun/OpenTUI.
 The CLI build omits the browser application and cloud model snapshot.
+LocalCode uses ripgrep and fuzzysort for file discovery, omitting the optional
+native FFF search library. Linux CI disables precompiled JavaScript bytecode to
+reduce distribution size; startup still uses the bundled Bun runtime.
 
 ## Isolation
 
